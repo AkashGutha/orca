@@ -1,0 +1,14 @@
+[package]
+name = "orca-desktop"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "orca_desktop"
+
+[[bin]]
+name = "orca-desktop"
+path = "src/main.rs"
+
+[dependencies]
+orca-core = { path = "../orca-core" }

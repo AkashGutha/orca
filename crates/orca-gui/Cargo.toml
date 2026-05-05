@@ -1,0 +1,16 @@
+[package]
+name = "orca-gui"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "orca-gui"
+path = "src/main.rs"
+
+[dependencies]
+eframe.workspace = true
+orca-core = { path = "../orca-core" }
+rfd.workspace = true
+serde.workspace = true
+tokio.workspace = true
+toml.workspace = true

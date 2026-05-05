@@ -1,0 +1,285 @@
+[orchestration]
+artifact_dir = "orca-runs"
+instruction_dir = "agents"
+max_parallel_agents = 8
+min_successful_planners = 2
+min_successful_critics = 1
+approval_mode = "auto"
+max_iterations = 10
+
+[orchestration.defaults]
+backend = "copilot"
+model = "default"
+timeout_secs = 900
+retries = 0
+
+[[orchestration.backends]]
+id = "copilot"
+program = "copilot"
+args = ["--silent", "--no-ask-user", "-p", "{prompt}"]
+
+[[orchestration.backends]]
+id = "claude"
+program = "claude"
+args = ["-p", "{prompt}"]
+
+[[orchestration.nodes]]
+id = "feature-generator"
+output_contract = "feature"
+artifact_dir = "feature-generation"
+phase_label = "feature_generation"
+instruction = "feature_generation.md"
+inputs = [{ source = "feedback" }]
+
+[[orchestration.nodes]]
+id = "planner-a"
+output_contract = "plan"
+artifact_dir = "planning"
+phase_label = "planning"
+instruction = "planning.md"
+inputs = [{ source = "feedback" }, { source = "feature-generator" }]
+
+[[orchestration.nodes]]
+id = "planner-b"
+output_contract = "plan"
+artifact_dir = "planning"
+phase_label = "planning"
+instruction = "planning.md"
+inputs = [{ source = "feedback" }, { source = "feature-generator" }]
+
+[[orchestration.nodes]]
+id = "planner-c"
+output_contract = "plan"
+artifact_dir = "planning"
+phase_label = "planning"
+instruction = "planning.md"
+inputs = [{ source = "feedback" }, { source = "feature-generator" }]
+
+[[orchestration.nodes]]
+id = "planner-d"
+output_contract = "plan"
+artifact_dir = "planning"
+phase_label = "planning"
+instruction = "planning.md"
+inputs = [{ source = "feedback" }, { source = "feature-generator" }]
+
+[[orchestration.nodes]]
+id = "critic-a"
+output_contract = "critique"
+artifact_dir = "critique"
+phase_label = "critique"
+instruction = "critique.md"
+inputs = [{ source = "planner-a" }]
+
+[[orchestration.nodes]]
+id = "critic-b"
+output_contract = "critique"
+artifact_dir = "critique"
+phase_label = "critique"
+instruction = "critique.md"
+inputs = [{ source = "planner-b" }]
+
+[[orchestration.nodes]]
+id = "critic-c"
+output_contract = "critique"
+artifact_dir = "critique"
+phase_label = "critique"
+instruction = "critique.md"
+inputs = [{ source = "planner-c" }]
+
+[[orchestration.nodes]]
+id = "critic-d"
+output_contract = "critique"
+artifact_dir = "critique"
+phase_label = "critique"
+instruction = "critique.md"
+inputs = [{ source = "planner-d" }]
+
+[[orchestration.nodes]]
+id = "orchestrator"
+output_contract = "golden_plan"
+artifact_dir = "golden-plan"
+phase_label = "golden_plan"
+instruction = "orchestration.md"
+inputs = [
+  { source = "feedback" },
+  { source = "planner-a" },
+  { source = "planner-b" },
+  { source = "planner-c" },
+  { source = "planner-d" },
+  { source = "critic-a" },
+  { source = "critic-b" },
+  { source = "critic-c" },
+  { source = "critic-d" },
+]
+
+[[orchestration.nodes]]
+id = "test-planner-a"
+output_contract = "test_plan"
+artifact_dir = "test-planning"
+phase_label = "test_planning"
+instruction = "test_planning.md"
+inputs = [{ source = "orchestrator" }]
+
+[[orchestration.nodes]]
+id = "test-planner-b"
+output_contract = "test_plan"
+artifact_dir = "test-planning"
+phase_label = "test_planning"
+instruction = "test_planning.md"
+inputs = [{ source = "orchestrator" }]
+
+[[orchestration.nodes]]
+id = "test-planner-c"
+output_contract = "test_plan"
+artifact_dir = "test-planning"
+phase_label = "test_planning"
+instruction = "test_planning.md"
+inputs = [{ source = "orchestrator" }]
+
+[[orchestration.nodes]]
+id = "test-planner-d"
+output_contract = "test_plan"
+artifact_dir = "test-planning"
+phase_label = "test_planning"
+instruction = "test_planning.md"
+inputs = [{ source = "orchestrator" }]
+
+[[orchestration.nodes]]
+id = "golden-test-plan"
+output_contract = "test_plan"
+artifact_dir = "golden-test-plan"
+phase_label = "golden_test_plan"
+instruction = "orchestration.md"
+inputs = [
+  { source = "orchestrator" },
+  { source = "test-planner-a" },
+  { source = "test-planner-b" },
+  { source = "test-planner-c" },
+  { source = "test-planner-d" },
+]
+
+[[orchestration.nodes]]
+id = "kpi-agent"
+output_contract = "kpi"
+artifact_dir = "kpi"
+phase_label = "kpi_generation"
+instruction = "kpi_generation.md"
+inputs = [{ source = "orchestrator" }]
+
+[[orchestration.nodes]]
+id = "test-agent"
+output_contract = "test"
+artifact_dir = "tests"
+phase_label = "test_generation"
+instruction = "test_generation.md"
+args = ["--silent", "--no-ask-user", "--allow-all-tools", "-p", "{prompt}"]
+resources = ["workspace-writer"]
+inputs = [{ source = "golden-test-plan" }]
+
+[[orchestration.nodes]]
+id = "work-agent"
+output_contract = "implementation"
+artifact_dir = "work"
+phase_label = "work"
+instruction = "work.md"
+model = "gpt-5.5"
+args = ["--silent", "--no-ask-user", "--model", "gpt-5.5", "--allow-all-tools", "-p", "{prompt}"]
+resources = ["workspace-writer"]
+inputs = [{ source = "orchestrator" }]
+
+[[orchestration.nodes]]
+id = "kpi-measure-agent"
+output_contract = "kpi"
+artifact_dir = "kpi-measurement"
+phase_label = "kpi_measurement"
+instruction = "kpi_measurement.md"
+inputs = [{ source = "orchestrator" }, { source = "work-agent" }, { source = "kpi-agent" }]
+
+[[orchestration.nodes]]
+id = "coverage-agent"
+output_contract = "coverage"
+artifact_dir = "feature-coverage"
+phase_label = "feature_coverage"
+instruction = "feature_coverage.md"
+inputs = [{ source = "orchestrator" }, { source = "work-agent" }, { source = "test-agent" }]
+
+[[orchestration.nodes]]
+id = "feedback-agent"
+output_contract = "feedback"
+artifact_dir = "feedback"
+phase_label = "feedback"
+instruction = "feedback.md"
+inputs = [{ source = "gate-feedback" }]
+
+[[orchestration.connections]]
+from = "feature-generator"
+to = ["planner-a", "planner-b", "planner-c", "planner-d"]
+
+[[orchestration.connections]]
+from = "planner-a"
+to = ["critic-a", "orchestrator"]
+
+[[orchestration.connections]]
+from = "planner-b"
+to = ["critic-b", "orchestrator"]
+
+[[orchestration.connections]]
+from = "planner-c"
+to = ["critic-c", "orchestrator"]
+
+[[orchestration.connections]]
+from = "planner-d"
+to = ["critic-d", "orchestrator"]
+
+[[orchestration.connections]]
+from = "critic-a"
+to = ["orchestrator"]
+
+[[orchestration.connections]]
+from = "critic-b"
+to = ["orchestrator"]
+
+[[orchestration.connections]]
+from = "critic-c"
+to = ["orchestrator"]
+
+[[orchestration.connections]]
+from = "critic-d"
+to = ["orchestrator"]
+
+[[orchestration.connections]]
+from = "orchestrator"
+to = ["test-planner-a", "test-planner-b", "test-planner-c", "test-planner-d", "kpi-agent", "work-agent"]
+
+[[orchestration.connections]]
+from = "test-planner-a"
+to = ["golden-test-plan"]
+
+[[orchestration.connections]]
+from = "test-planner-b"
+to = ["golden-test-plan"]
+
+[[orchestration.connections]]
+from = "test-planner-c"
+to = ["golden-test-plan"]
+
+[[orchestration.connections]]
+from = "test-planner-d"
+to = ["golden-test-plan"]
+
+[[orchestration.connections]]
+from = "golden-test-plan"
+to = ["test-agent"]
+
+[[orchestration.connections]]
+from = "work-agent"
+to = ["kpi-measure-agent", "coverage-agent"]
+
+[[orchestration.connections]]
+from = "kpi-agent"
+to = ["kpi-measure-agent"]
+
+[[orchestration.connections]]
+from = "test-agent"
+to = ["coverage-agent"]

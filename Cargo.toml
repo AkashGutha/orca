@@ -1,0 +1,30 @@
+[workspace]
+members = [
+    "crates/orca-core",
+    "crates/orca-cli",
+    "crates/orca-desktop",
+]
+exclude = ["crates/orca-desktop-runtime"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+async-trait = "0.1"
+clap = { version = "4.5", features = ["derive"] }
+crossterm = "0.28"
+eframe = "0.29"
+ratatui = "0.29"
+rfd = "0.15"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+tempfile = "3"
+thiserror = "1"
+tokio = { version = "1", features = ["io-util", "macros", "process", "rt-multi-thread", "signal", "sync", "time"] }
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+unicode-width = "0.2"

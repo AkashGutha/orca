@@ -1,0 +1,198 @@
+[orchestration]
+artifact_dir = "orca-runs"
+instruction_dir = "config/instructions"
+max_parallel_agents = 8
+min_successful_planners = 2
+min_successful_critics = 1
+approval_mode = "auto"
+max_iterations = 10
+
+[orchestration.defaults]
+backend = "copilot"
+model = "default"
+timeout_secs = 900
+retries = 0
+
+[[orchestration.backends]]
+id = "copilot"
+program = "copilot"
+args = ["--silent", "--no-ask-user", "-p", "{prompt}"]
+
+[[orchestration.nodes]]
+id = "spec-analyzer"
+output_contract = "feature"
+artifact_dir = "feature-generation"
+phase_label = "feature_generation"
+instruction = "feature_generation.md"
+inputs = [{ source = "feedback" }]
+
+[[orchestration.nodes]]
+id = "rtl-planner-a"
+output_contract = "plan"
+artifact_dir = "planning"
+phase_label = "planning"
+instruction = "planning.md"
+inputs = [{ source = "feedback" }, { source = "spec-analyzer" }]
+
+[[orchestration.nodes]]
+id = "rtl-planner-b"
+output_contract = "plan"
+artifact_dir = "planning"
+phase_label = "planning"
+instruction = "planning.md"
+inputs = [{ source = "feedback" }, { source = "spec-analyzer" }]
+
+[[orchestration.nodes]]
+id = "rtl-planner-c"
+output_contract = "plan"
+artifact_dir = "planning"
+phase_label = "planning"
+instruction = "planning.md"
+inputs = [{ source = "feedback" }, { source = "spec-analyzer" }]
+
+[[orchestration.nodes]]
+id = "rtl-planner-d"
+output_contract = "plan"
+artifact_dir = "planning"
+phase_label = "planning"
+instruction = "planning.md"
+inputs = [{ source = "feedback" }, { source = "spec-analyzer" }]
+
+[[orchestration.nodes]]
+id = "rtl-critic-a"
+output_contract = "critique"
+artifact_dir = "critique"
+phase_label = "critique"
+instruction = "critique.md"
+inputs = [{ source = "rtl-planner-a" }]
+
+[[orchestration.nodes]]
+id = "rtl-critic-b"
+output_contract = "critique"
+artifact_dir = "critique"
+phase_label = "critique"
+instruction = "critique.md"
+inputs = [{ source = "rtl-planner-b" }]
+
+[[orchestration.nodes]]
+id = "rtl-critic-c"
+output_contract = "critique"
+artifact_dir = "critique"
+phase_label = "critique"
+instruction = "critique.md"
+inputs = [{ source = "rtl-planner-c" }]
+
+[[orchestration.nodes]]
+id = "rtl-critic-d"
+output_contract = "critique"
+artifact_dir = "critique"
+phase_label = "critique"
+instruction = "critique.md"
+inputs = [{ source = "rtl-planner-d" }]
+
+[[orchestration.nodes]]
+id = "golden-plan-generator"
+output_contract = "golden_plan"
+artifact_dir = "golden-plan"
+phase_label = "golden_plan"
+instruction = "orchestration.md"
+inputs = [
+  { source = "feedback" },
+  { source = "rtl-planner-a" },
+  { source = "rtl-planner-b" },
+  { source = "rtl-planner-c" },
+  { source = "rtl-planner-d" },
+  { source = "rtl-critic-a" },
+  { source = "rtl-critic-b" },
+  { source = "rtl-critic-c" },
+  { source = "rtl-critic-d" },
+]
+
+[[orchestration.nodes]]
+id = "rtl-design-agent"
+output_contract = "implementation"
+artifact_dir = "rtl"
+phase_label = "rtl_design"
+instruction = "rtl_design.md"
+model = "gpt-5.5"
+args = ["--no-ask-user", "--model", "gpt-5.5", "--allow-all-tools", "-p", "{prompt}"]
+resources = ["workspace-writer"]
+inputs = [{ source = "golden-plan-generator" }]
+
+[[orchestration.nodes]]
+id = "uvm-test-bench-agent"
+output_contract = "test"
+artifact_dir = "uvm"
+phase_label = "uvm_test_bench"
+instruction = "uvm_test_bench.md"
+args = ["--no-ask-user", "--model", "gpt-5.5", "--allow-all-tools", "-p", "{prompt}"]
+resources = ["workspace-writer"]
+inputs = [{ source = "golden-plan-generator" }, { source = "rtl-design-agent" }]
+
+[[orchestration.nodes]]
+id = "rtl-env-review-agent"
+output_contract = "coverage"
+artifact_dir = "feature-coverage"
+phase_label = "feature_coverage"
+instruction = "feature_coverage.md"
+inputs = [
+  { source = "golden-plan-generator" },
+  { source = "rtl-design-agent" },
+  { source = "uvm-test-bench-agent" },
+]
+
+[[orchestration.nodes]]
+id = "rtl-feedback-agent"
+output_contract = "feedback"
+artifact_dir = "feedback"
+phase_label = "feedback"
+instruction = "feedback.md"
+inputs = [{ source = "gate-feedback" }]
+
+[[orchestration.connections]]
+from = "spec-analyzer"
+to = ["rtl-planner-a", "rtl-planner-b", "rtl-planner-c", "rtl-planner-d"]
+
+[[orchestration.connections]]
+from = "rtl-planner-a"
+to = ["rtl-critic-a", "golden-plan-generator"]
+
+[[orchestration.connections]]
+from = "rtl-planner-b"
+to = ["rtl-critic-b", "golden-plan-generator"]
+
+[[orchestration.connections]]
+from = "rtl-planner-c"
+to = ["rtl-critic-c", "golden-plan-generator"]
+
+[[orchestration.connections]]
+from = "rtl-planner-d"
+to = ["rtl-critic-d", "golden-plan-generator"]
+
+[[orchestration.connections]]
+from = "rtl-critic-a"
+to = ["golden-plan-generator"]
+
+[[orchestration.connections]]
+from = "rtl-critic-b"
+to = ["golden-plan-generator"]
+
+[[orchestration.connections]]
+from = "rtl-critic-c"
+to = ["golden-plan-generator"]
+
+[[orchestration.connections]]
+from = "rtl-critic-d"
+to = ["golden-plan-generator"]
+
+[[orchestration.connections]]
+from = "golden-plan-generator"
+to = ["rtl-design-agent"]
+
+[[orchestration.connections]]
+from = "rtl-design-agent"
+to = ["uvm-test-bench-agent", "rtl-env-review-agent"]
+
+[[orchestration.connections]]
+from = "uvm-test-bench-agent"
+to = ["rtl-env-review-agent"]

@@ -1,0 +1,9 @@
+[sources]
+agents = ["agents"]
+instructions = ["instructions"]
+workflows = ["config"]
+
+[defaults]
+workflow = "orca.default.toml"
+artifact_dir = "orca-runs"
+max_parallel_agents = 8

@@ -1,0 +1,27 @@
+[package]
+name = "orca-cli"
+version.workspace = true
+edition.workspace = true
+default-run = "orca"
+
+[[bin]]
+name = "orca"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+crossterm.workspace = true
+orca-core = { path = "../orca-core" }
+ratatui.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+toml.workspace = true
+tracing-subscriber.workspace = true
+unicode-width.workspace = true
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+serde_json.workspace = true
+tempfile.workspace = true
