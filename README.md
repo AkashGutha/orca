@@ -1,3 +1,5 @@
+![ORCA banner](docs/assets/orca-banner.svg)
+
 # ORCA - Agents orchestration platform
 
 `orca` is a Rust CLI foundation for orchestrating external commands and AI agent harnesses with bounded concurrency, dependency ordering, retries, timeouts, cancellation, and structured output. It is designed to support configurable open-source agent backends, with Copilot CLI available as one backend profile.
@@ -392,52 +394,4 @@ Goal runs write artifacts under `artifact_dir` with one directory per iteration:
 cargo fmt
 cargo clippy --all-targets --all-features
 cargo test --all
-```
-
-## React calculator app
-
-This repository also includes a lightweight frontend-only React calculator app
-under `web/`. It provides Basic, Scientific, Unit Converter, and Number Systems
-modes without adding UI, math, parser, or conversion libraries.
-
-```sh
-npm install
-npm run dev
-npm run build
-```
-
-The app is served by Vite from `web/index.html`; source files live in
-`web/src/`.
-
-## React calculator app
-
-A lightweight frontend-only React calculator suite lives in `web/`. It uses React, React DOM, and Vite build tooling only.
-
-```sh
-cd web
-npm install
-npm run dev
-npm run build
-```
-
-The app includes Basic, Scientific, Unit Converter, and Number-System Converter modes.
-
-## 32-bit pipelined ALU example
-
-The `verilog_alu_8bit/` directory name is historical. Its primary RTL is now `rtl/alu_32bit_pipelined.v`, a 32-bit ALU with synchronous active-low reset, valid/bubble pipeline control, the documented opcode map, full result flags, and exact five-cycle latency from input sample to public output. The legacy `rtl/alu_8bit.v` and `tb/tb_alu_8bit.v` files are retained only as historical references.
-
-Run the primary self-checking ALU validation with:
-
-```sh
-cd verilog_alu_8bit
-mkdir -p sim
-iverilog -g2012 -Wall -o sim/tb_alu_32bit_pipelined.vvp \
-  rtl/alu_32bit_pipelined.v tb/tb_alu_32bit_pipelined.v
-vvp sim/tb_alu_32bit_pipelined.vvp
-```
-
-The expected final summary is:
-
-```text
-PASS: all 32-bit pipelined ALU tests passed
 ```

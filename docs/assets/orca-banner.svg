@@ -1,0 +1,30 @@
+<svg width="1280" height="360" viewBox="0 0 1280 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">ORCA</title>
+  <desc id="desc">ORCA agents orchestration platform banner with a sky blue to white gradient.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1280" y2="360" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#87CEEB"/>
+      <stop offset="0.58" stop-color="#DFF6FF"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1000 80) rotate(132) scale(420 300)">
+      <stop stop-color="#FFFFFF" stop-opacity="0.86"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#0369A1" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="360" rx="36" fill="url(#sky)"/>
+  <rect width="1280" height="360" rx="36" fill="url(#glow)"/>
+  <path d="M70 292C180 198 289 169 397 205C496 238 585 233 663 190C755 140 843 123 929 139C1042 160 1137 126 1214 38" stroke="#FFFFFF" stroke-opacity="0.72" stroke-width="26" stroke-linecap="round"/>
+  <path d="M86 292C192 220 286 200 367 232C481 277 581 269 668 208C753 149 843 132 938 158C1052 189 1144 161 1210 73" stroke="#0284C7" stroke-opacity="0.18" stroke-width="10" stroke-linecap="round"/>
+  <g filter="url(#shadow)">
+    <circle cx="214" cy="180" r="82" fill="#FFFFFF" fill-opacity="0.84"/>
+    <path d="M214 109C175 109 144 141 144 180C144 219 175 251 214 251C253 251 285 219 285 180C285 141 253 109 214 109ZM214 134C239 134 260 155 260 180C260 205 239 226 214 226C189 226 169 205 169 180C169 155 189 134 214 134Z" fill="#075985"/>
+    <path d="M195 166C200 156 207 151 216 151C231 151 242 162 242 177C242 193 230 206 215 206C202 206 193 199 189 187H211C213 190 215 191 219 191C225 191 230 185 230 178C230 171 225 166 218 166C214 166 211 168 208 172L195 166Z" fill="#38BDF8"/>
+  </g>
+  <text x="340" y="172" fill="#082F49" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="92" font-weight="800" letter-spacing="0">ORCA</text>
+  <text x="346" y="224" fill="#075985" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="30" font-weight="600" letter-spacing="0">Agents orchestration platform</text>
+  <text x="346" y="266" fill="#0C4A6E" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="22" font-weight="500" letter-spacing="0">Coordinate planning, implementation, testing, and measurement agents from one workflow.</text>
+</svg>

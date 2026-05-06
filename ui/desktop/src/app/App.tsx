@@ -326,18 +326,18 @@ export function App() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex h-14 items-center border-b border-slate-800 bg-slate-950/85 px-5 backdrop-blur">
+      <header className="flex h-14 items-center border-b border-sky-100 bg-white/80 px-5 shadow-sm shadow-sky-900/5 backdrop-blur">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orca-500 text-slate-950">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orca-600 text-white shadow-sm shadow-sky-900/20">
             <Bot className="h-5 w-5" />
           </div>
           <div>
-            <div className="font-semibold text-slate-50">ORCA</div>
-            <div className="text-xs text-slate-400">Agents orchestration platform</div>
+            <div className="font-semibold text-slate-950">ORCA</div>
+            <div className="text-xs text-sky-700">Agents orchestration platform</div>
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <span className="max-w-xl truncate text-xs text-slate-400">{status}</span>
+          <span className="max-w-xl truncate text-xs text-sky-800">{status}</span>
           <Button variant="outline" size="sm" onClick={() => setSettingsOpen((open) => !open)}>
             <SettingsIcon className="mr-2 h-4 w-4" />
             Settings
@@ -346,20 +346,20 @@ export function App() {
       </header>
 
       <main className="grid min-h-0 flex-1 grid-cols-[360px_1fr]">
-        <aside className="min-h-0 border-r border-slate-800 bg-slate-950/60 p-4">
+        <aside className="min-h-0 border-r border-sky-100 bg-white/44 p-4 backdrop-blur">
           <Card>
             <CardHeader>
               <CardTitle>Run goal</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <label className="space-y-2 text-sm">
-                <span className="text-slate-300">Goal</span>
+                <span className="text-slate-700">Goal</span>
                 <Textarea value={goal} onChange={(event) => setGoal(event.target.value)} />
               </label>
               <label className="space-y-2 text-sm">
-                <span className="text-slate-300">Workflow config</span>
+                <span className="text-slate-700">Workflow config</span>
                 <select
-                  className="h-10 w-full rounded-md border border-slate-800 bg-slate-950 px-3 text-sm text-slate-100"
+                  className="h-10 w-full rounded-md border border-sky-200 bg-white/80 px-3 text-sm text-slate-950"
                   value={selectedWorkflow}
                   onChange={(event) => setSelectedWorkflow(event.target.value)}
                 >
@@ -373,11 +373,11 @@ export function App() {
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-2 text-sm">
-                  <span className="text-slate-300">Artifact dir</span>
+                  <span className="text-slate-700">Artifact dir</span>
                   <Input value={artifactDir} onChange={(event) => setArtifactDir(event.target.value)} />
                 </label>
                 <label className="space-y-2 text-sm">
-                  <span className="text-slate-300">Max agents</span>
+                  <span className="text-slate-700">Max agents</span>
                   <Input
                     value={maxParallelAgents}
                     onChange={(event) => setMaxParallelAgents(event.target.value)}
@@ -385,10 +385,10 @@ export function App() {
                 </label>
               </div>
               <label className="space-y-2 text-sm">
-                <span className="text-slate-300">Instruction override dir</span>
+                <span className="text-slate-700">Instruction override dir</span>
                 <Input value={instructionDir} onChange={(event) => setInstructionDir(event.target.value)} />
               </label>
-              <label className="flex items-center gap-2 text-sm text-slate-300">
+              <label className="flex items-center gap-2 text-sm text-slate-700">
                 <input
                   type="checkbox"
                   checked={approveGoldenPlan}
@@ -426,7 +426,7 @@ export function App() {
               </CardHeader>
               <CardContent className="grid max-h-[calc(100vh-10rem)] gap-3 overflow-auto lg:grid-cols-2">
                 {paneList.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-slate-800 p-8 text-center text-slate-500">
+                  <div className="rounded-lg border border-dashed border-sky-200 bg-white/42 p-8 text-center text-sky-700">
                     Start a run to stream agent output.
                   </div>
                 ) : (
@@ -480,17 +480,17 @@ export function App() {
 
 function AgentPaneView({ pane }: { pane: AgentPane }) {
   return (
-    <div className="min-h-72 rounded-lg border border-slate-800 bg-slate-950">
-      <div className="flex items-center justify-between border-b border-slate-800 px-3 py-2">
+    <div className="min-h-72 rounded-lg border border-sky-100 bg-white/80">
+      <div className="flex items-center justify-between border-b border-sky-100 px-3 py-2">
         <div>
-          <div className="text-sm font-semibold text-slate-100">{pane.id}</div>
-          <div className="text-xs text-slate-500">
+          <div className="text-sm font-semibold text-slate-950">{pane.id}</div>
+          <div className="text-xs text-sky-700">
             {pane.label} · {pane.model ?? 'default'}
           </div>
         </div>
-        <span className="rounded-full bg-slate-900 px-2 py-1 text-xs text-slate-300">{pane.status}</span>
+        <span className="rounded-full bg-sky-100 px-2 py-1 text-xs text-sky-950">{pane.status}</span>
       </div>
-      <pre className="max-h-80 overflow-auto whitespace-pre-wrap p-3 text-xs leading-5 text-slate-300">
+      <pre className="max-h-80 overflow-auto whitespace-pre-wrap p-3 text-xs leading-5 text-slate-700">
         {pane.lines.join('\n')}
       </pre>
     </div>
@@ -531,7 +531,7 @@ function WorkflowEditor({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="truncate text-xs text-slate-500">{selectedWorkflow || 'No workflow selected'}</div>
+        <div className="truncate text-xs text-sky-700">{selectedWorkflow || 'No workflow selected'}</div>
         <Textarea
           className="min-h-64 font-mono text-xs"
           value={workflowContent}
@@ -539,7 +539,7 @@ function WorkflowEditor({
           placeholder="Load a workflow config to edit TOML/YAML."
         />
         <label className="space-y-2 text-sm">
-          <span className="text-slate-300">New or duplicate path</span>
+          <span className="text-slate-700">New or duplicate path</span>
           <Input
             value={newWorkflowPath}
             onChange={(event) => setNewWorkflowPath(event.target.value)}
@@ -616,7 +616,7 @@ function ArtifactBrowser({
           </Button>
         </div>
         <select
-          className="h-10 w-full rounded-md border border-slate-800 bg-slate-950 px-3 text-sm text-slate-100"
+          className="h-10 w-full rounded-md border border-sky-200 bg-white/80 px-3 text-sm text-slate-950"
           value={selectedArtifact}
           onChange={(event) => setSelectedArtifact(event.target.value)}
         >
@@ -628,7 +628,7 @@ function ArtifactBrowser({
           ))}
         </select>
         <select
-          className="h-10 w-full rounded-md border border-slate-800 bg-slate-950 px-3 text-sm text-slate-100"
+          className="h-10 w-full rounded-md border border-sky-200 bg-white/80 px-3 text-sm text-slate-950"
           value={selectedArtifactFile}
           onChange={(event) => setSelectedArtifactFile(event.target.value)}
         >
@@ -639,7 +639,7 @@ function ArtifactBrowser({
             </option>
           ))}
         </select>
-        <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md border border-slate-800 bg-slate-950 p-3 text-xs text-slate-300">
+        <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md border border-sky-200 bg-white/80 p-3 text-xs text-slate-700">
           {artifactContent || 'Artifact manifest content will appear here.'}
         </pre>
       </CardContent>
@@ -684,32 +684,32 @@ function SettingsPanel({
       </CardHeader>
       <CardContent className="max-h-[calc(100vh-10rem)] space-y-4 overflow-auto">
         <label className="space-y-2 text-sm">
-          <span className="text-slate-300">Settings file</span>
+          <span className="text-slate-700">Settings file</span>
           <Input value={settingsPath} onChange={(event) => setSettingsPath(event.target.value)} />
         </label>
         <label className="space-y-2 text-sm">
-          <span className="text-slate-300">Agent sources</span>
+          <span className="text-slate-700">Agent sources</span>
           <Textarea
             value={settings.sources.agents.join('\n')}
             onChange={(event) => updateSources('agents', event.target.value)}
           />
         </label>
         <label className="space-y-2 text-sm">
-          <span className="text-slate-300">Instruction sources</span>
+          <span className="text-slate-700">Instruction sources</span>
           <Textarea
             value={settings.sources.instructions.join('\n')}
             onChange={(event) => updateSources('instructions', event.target.value)}
           />
         </label>
         <label className="space-y-2 text-sm">
-          <span className="text-slate-300">Workflow sources</span>
+          <span className="text-slate-700">Workflow sources</span>
           <Textarea
             value={settings.sources.workflows.join('\n')}
             onChange={(event) => updateSources('workflows', event.target.value)}
           />
         </label>
         <label className="space-y-2 text-sm">
-          <span className="text-slate-300">Default workflow</span>
+          <span className="text-slate-700">Default workflow</span>
           <Input
             value={settings.defaults.workflow ?? ''}
             onChange={(event) =>
@@ -721,7 +721,7 @@ function SettingsPanel({
           />
         </label>
         <label className="space-y-2 text-sm">
-          <span className="text-slate-300">Default artifact dir</span>
+          <span className="text-slate-700">Default artifact dir</span>
           <Input
             value={settings.defaults.artifact_dir ?? ''}
             onChange={(event) =>
@@ -733,7 +733,7 @@ function SettingsPanel({
           />
         </label>
         <label className="space-y-2 text-sm">
-          <span className="text-slate-300">Default max parallel agents</span>
+          <span className="text-slate-700">Default max parallel agents</span>
           <Input
             value={settings.defaults.max_parallel_agents?.toString() ?? ''}
             onChange={(event) =>
