@@ -1,4 +1,5 @@
 use std::env;
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -8,7 +9,11 @@ use crate::config::DEFAULT_CONFIG_PATH;
 use crate::errors::AppError;
 
 pub const DEFAULT_SETTINGS_PATH: &str = "settings.toml";
+pub const USER_SETTINGS_APP_DIR: &str = "orca";
+pub const USER_SETTINGS_FILE_NAME: &str = "settings.toml";
 pub const USER_SETTINGS_RELATIVE_PATH: &str = ".config/orca/settings.toml";
+
+const VSCODE_USER_DATA_DIRS: &[&str] = &["Code", "Code - Insiders", "VSCodium"];
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Settings {
@@ -24,6 +29,8 @@ pub struct SourceSettings {
     pub agents: Vec<PathBuf>,
     #[serde(default = "default_instruction_sources")]
     pub instructions: Vec<PathBuf>,
+    #[serde(default = "default_skill_sources")]
+    pub skills: Vec<PathBuf>,
     #[serde(default = "default_workflow_sources")]
     pub workflows: Vec<PathBuf>,
 }
@@ -55,6 +62,7 @@ impl Default for SourceSettings {
         Self {
             agents: default_agent_sources(),
             instructions: default_instruction_sources(),
+            skills: default_skill_sources(),
             workflows: default_workflow_sources(),
         }
     }
@@ -139,6 +147,7 @@ impl Settings {
     pub fn validate(&self) -> Result<(), AppError> {
         validate_sources("agents", &self.sources.agents)?;
         validate_sources("instructions", &self.sources.instructions)?;
+        validate_sources("skills", &self.sources.skills)?;
         validate_sources("workflows", &self.sources.workflows)?;
         if self.defaults.max_parallel_agents == Some(0) {
             return Err(AppError::InvalidConfig(
@@ -226,15 +235,65 @@ pub fn default_settings_candidates() -> Vec<PathBuf> {
 }
 
 pub fn user_settings_path() -> Option<PathBuf> {
-    env::var_os("HOME")
-        .filter(|home| !home.is_empty())
-        .map(PathBuf::from)
-        .or_else(|| {
-            env::var_os("USERPROFILE")
-                .filter(|home| !home.is_empty())
-                .map(PathBuf::from)
+    user_config_dir_from_vars(|name| env::var_os(name)).map(|config_dir| {
+        config_dir
+            .join(USER_SETTINGS_APP_DIR)
+            .join(USER_SETTINGS_FILE_NAME)
+    })
+}
+
+fn user_config_dir_from_vars(mut var: impl FnMut(&str) -> Option<OsString>) -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        non_empty_var(&mut var, "APPDATA").or_else(|| {
+            non_empty_var(&mut var, "USERPROFILE").map(|home| home.join("AppData").join("Roaming"))
         })
-        .map(|home| home.join(USER_SETTINGS_RELATIVE_PATH))
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        non_empty_var(&mut var, "HOME").map(|home| home.join("Library").join("Application Support"))
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        non_empty_var(&mut var, "XDG_CONFIG_HOME")
+            .or_else(|| non_empty_var(&mut var, "HOME").map(|home| home.join(".config")))
+    }
+
+    #[cfg(not(any(windows, unix)))]
+    {
+        non_empty_var(&mut var, "HOME").or_else(|| non_empty_var(&mut var, "USERPROFILE"))
+    }
+}
+
+fn non_empty_var(var: &mut impl FnMut(&str) -> Option<OsString>, name: &str) -> Option<PathBuf> {
+    var(name)
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+}
+
+fn user_home_from_vars(mut var: impl FnMut(&str) -> Option<OsString>) -> Option<PathBuf> {
+    non_empty_var(&mut var, "HOME").or_else(|| non_empty_var(&mut var, "USERPROFILE"))
+}
+
+fn vscode_user_prompt_dirs_from_vars(var: impl FnMut(&str) -> Option<OsString>) -> Vec<PathBuf> {
+    user_config_dir_from_vars(var)
+        .into_iter()
+        .flat_map(|config_dir| {
+            VSCODE_USER_DATA_DIRS
+                .iter()
+                .map(move |name| config_dir.join(name).join("User").join("prompts"))
+        })
+        .collect()
+}
+
+fn append_unique_paths(paths: &mut Vec<PathBuf>, additions: impl IntoIterator<Item = PathBuf>) {
+    for path in additions {
+        if !paths.contains(&path) {
+            paths.push(path);
+        }
+    }
 }
 
 fn validate_sources(name: &str, sources: &[PathBuf]) -> Result<(), AppError> {
@@ -255,11 +314,76 @@ fn validate_sources(name: &str, sources: &[PathBuf]) -> Result<(), AppError> {
 }
 
 fn default_agent_sources() -> Vec<PathBuf> {
-    vec![PathBuf::from("agents")]
+    let mut sources = [
+        "agents",
+        ".github/agents",
+        ".claude/agents",
+        ".codex/agents",
+    ]
+    .into_iter()
+    .map(PathBuf::from)
+    .collect::<Vec<_>>();
+    append_unique_paths(
+        &mut sources,
+        user_home_from_vars(|name| env::var_os(name))
+            .into_iter()
+            .flat_map(|home| [home.join(".claude/agents"), home.join(".codex/agents")]),
+    );
+    append_unique_paths(
+        &mut sources,
+        vscode_user_prompt_dirs_from_vars(|name| env::var_os(name)),
+    );
+    sources
 }
 
 fn default_instruction_sources() -> Vec<PathBuf> {
-    vec![PathBuf::from("instructions")]
+    let mut sources = [
+        "instructions",
+        "config/instructions",
+        ".github/instructions",
+        ".github/prompts",
+        ".claude",
+        ".codex",
+    ]
+    .into_iter()
+    .map(PathBuf::from)
+    .collect::<Vec<_>>();
+    append_unique_paths(
+        &mut sources,
+        user_home_from_vars(|name| env::var_os(name))
+            .into_iter()
+            .flat_map(|home| [home.join(".claude"), home.join(".codex")]),
+    );
+    append_unique_paths(
+        &mut sources,
+        vscode_user_prompt_dirs_from_vars(|name| env::var_os(name)),
+    );
+    sources
+}
+
+fn default_skill_sources() -> Vec<PathBuf> {
+    let mut sources = [
+        "skills",
+        ".github/skills",
+        ".claude/skills",
+        ".codex/skills",
+    ]
+    .into_iter()
+    .map(PathBuf::from)
+    .collect::<Vec<_>>();
+    append_unique_paths(
+        &mut sources,
+        user_home_from_vars(|name| env::var_os(name))
+            .into_iter()
+            .flat_map(|home| {
+                [
+                    home.join(".copilot/skills"),
+                    home.join(".claude/skills"),
+                    home.join(".codex/skills"),
+                ]
+            }),
+    );
+    sources
 }
 
 fn default_workflow_sources() -> Vec<PathBuf> {
@@ -323,6 +447,7 @@ mod tests {
             sources: SourceSettings {
                 agents: vec![dir.path().join("agents")],
                 instructions: vec![dir.path().join("instructions")],
+                skills: vec![dir.path().join("skills")],
                 workflows: vec![dir.path().join("workflows")],
             },
             defaults: DefaultRunSettings {
@@ -379,5 +504,67 @@ mod tests {
             configs,
             vec![workflows.join("a.toml"), nested.join("b.yaml")]
         );
+    }
+
+    #[test]
+    fn default_sources_include_common_project_customization_dirs() {
+        let sources = SourceSettings::default();
+
+        assert!(sources.agents.contains(&PathBuf::from(".claude/agents")));
+        assert!(sources.agents.contains(&PathBuf::from(".codex/agents")));
+        assert!(
+            sources
+                .instructions
+                .contains(&PathBuf::from(".github/instructions"))
+        );
+        assert!(
+            sources
+                .instructions
+                .contains(&PathBuf::from(".github/prompts"))
+        );
+        assert!(sources.skills.contains(&PathBuf::from("skills")));
+        assert!(sources.skills.contains(&PathBuf::from(".claude/skills")));
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    #[test]
+    fn vscode_prompt_dirs_use_platform_config_directory() {
+        let dirs = vscode_user_prompt_dirs_from_vars(|name| match name {
+            "XDG_CONFIG_HOME" => Some(OsString::from("/tmp/config")),
+            _ => None,
+        });
+
+        assert!(dirs.contains(&PathBuf::from("/tmp/config/Code/User/prompts")));
+        assert!(dirs.contains(&PathBuf::from("/tmp/config/Code - Insiders/User/prompts")));
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    #[test]
+    fn user_settings_path_prefers_xdg_config_home_on_unix() {
+        let config_dir = user_config_dir_from_vars(|name| match name {
+            "XDG_CONFIG_HOME" => Some(OsString::from("/tmp/orca-config")),
+            "HOME" => Some(OsString::from("/home/orca")),
+            _ => None,
+        })
+        .unwrap();
+
+        assert_eq!(config_dir, PathBuf::from("/tmp/orca-config"));
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    #[test]
+    fn user_settings_path_falls_back_to_home_config_on_unix() {
+        let path = user_config_dir_from_vars(|name| match name {
+            "HOME" => Some(OsString::from("/home/orca")),
+            _ => None,
+        })
+        .map(|config_dir| {
+            config_dir
+                .join(USER_SETTINGS_APP_DIR)
+                .join(USER_SETTINGS_FILE_NAME)
+        })
+        .unwrap();
+
+        assert_eq!(path, PathBuf::from("/home/orca/.config/orca/settings.toml"));
     }
 }

@@ -1,6 +1,7 @@
 [sources]
 agents = ["agents"]
 instructions = ["instructions"]
+skills = ["skills"]
 workflows = ["config"]
 
 [defaults]

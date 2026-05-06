@@ -82,12 +82,19 @@ The first `golden_plan` output is the workflow boundary between analysis/plannin
 
 Goal config is graph-shaped and can be written in TOML (`config/orca.default.toml`) or YAML (`config/orca.yaml` / `config/orca.yml`). The CLI defaults to the `config/` folder and accepts an explicit path with `--config` or `--config-file`.
 
-`settings.toml` controls where ORCA looks for reusable setup files. ORCA searches `./settings.toml` first and then `~/.config/orca/settings.toml`, or an explicit file passed with `--settings`.
+`settings.toml` controls where ORCA looks for reusable setup files. ORCA searches `./settings.toml` first and then the platform user config path, or an explicit file passed with `--settings`.
+
+| Platform | User settings fallback |
+| --- | --- |
+| Linux / Unix | `$XDG_CONFIG_HOME/orca/settings.toml`, or `~/.config/orca/settings.toml` when `XDG_CONFIG_HOME` is unset |
+| macOS | `~/Library/Application Support/orca/settings.toml` |
+| Windows | `%APPDATA%\\orca\\settings.toml`, or `%USERPROFILE%\\AppData\\Roaming\\orca\\settings.toml` when `APPDATA` is unset |
 
 ```toml
 [sources]
 agents = ["agents"]
 instructions = ["instructions"]
+skills = ["skills"]
 workflows = ["config"]
 
 [defaults]
@@ -96,7 +103,15 @@ artifact_dir = "orca-runs"
 max_parallel_agents = 8
 ```
 
-Settings precedence is explicit run fields, then `settings.toml`, then workflow config values, then embedded defaults. Workflow config names are resolved through ordered `[sources].workflows`; instruction names are resolved through ordered `[sources].instructions` before embedded instructions. Agent source directories are validated and persisted in settings, while concrete external agent-definition loading remains workflow-config based for now.
+Settings precedence is explicit run fields, then `settings.toml`, then workflow config values, then embedded defaults. Workflow config names are resolved through ordered `[sources].workflows`; instruction names are resolved through ordered `[sources].instructions` before embedded instructions. Agent and skill source directories are validated and persisted in settings, while concrete external definition loading remains workflow-config based for now.
+
+When a settings file omits a source list, ORCA seeds it with common project and user customization locations for Copilot / VS Code, Claude, and Codex:
+
+| Tool family | Common project locations | Common user locations |
+| --- | --- | --- |
+| Copilot / VS Code | `.github/agents`, `.github/instructions`, `.github/prompts`, `.github/skills` | VS Code `User/prompts` under `Code`, `Code - Insiders`, or `VSCodium`; `~/.copilot/skills` |
+| Claude | `.claude/agents`, `.claude`, `.claude/skills` | `~/.claude/agents`, `~/.claude`, `~/.claude/skills` |
+| Codex | `.codex/agents`, `.codex`, `.codex/skills` | `~/.codex/agents`, `~/.codex`, `~/.codex/skills` |
 
 | Config area | Purpose |
 | --- | --- |

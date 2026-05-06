@@ -63,6 +63,8 @@ pub(super) fn draw_settings_panel(
         &mut settings.sources.instructions,
     );
     ui.separator();
+    source_directories(ui, "Skill source directories", &mut settings.sources.skills);
+    ui.separator();
     source_directories(
         ui,
         "Workflow config source directories",

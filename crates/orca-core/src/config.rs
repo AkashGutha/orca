@@ -85,6 +85,7 @@ pub struct OrchestrationNode {
     pub id: String,
     #[serde(default = "default_node_kind")]
     pub kind: NodeKind,
+    pub evaluation: Option<String>,
     #[serde(default = "default_output_contract")]
     pub output_contract: String,
     pub artifact_dir: Option<String>,
@@ -115,6 +116,14 @@ pub struct InputSelector {
 pub struct OrchestrationConnection {
     pub from: String,
     pub to: Vec<String>,
+    pub condition: Option<BranchCondition>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum BranchCondition {
+    True,
+    False,
 }
 
 impl OrchestrationConfig {
@@ -169,6 +178,10 @@ impl OrchestrationConfig {
                     .push(connection.from.clone());
             }
         }
+        let nodes_by_id = nodes
+            .iter()
+            .map(|node| (node.id.clone(), node.clone()))
+            .collect::<BTreeMap<_, _>>();
 
         let specs = nodes
             .into_iter()
@@ -213,9 +226,13 @@ impl OrchestrationConfig {
                     command,
                     args,
                     input_sources: node.inputs.into_iter().map(|input| input.source).collect(),
-                    depends_on: merge_dependencies(
-                        node.depends_on,
-                        connection_dependencies.remove(&node_id).unwrap_or_default(),
+                    depends_on: expand_executable_dependencies(
+                        merge_dependencies(
+                            node.depends_on,
+                            connection_dependencies.remove(&node_id).unwrap_or_default(),
+                        ),
+                        &nodes_by_id,
+                        &connection_dependencies,
                     ),
                     resources: node.resources,
                     timeout_secs: node.timeout_secs.or(defaults.timeout_secs),
@@ -443,6 +460,7 @@ fn default_agent_node(id: &str, output_contract: &str, instruction: &str) -> Orc
     OrchestrationNode {
         id: id.to_string(),
         kind: NodeKind::Agent,
+        evaluation: None,
         output_contract: output_contract.to_string(),
         artifact_dir: Some(output_contract.replace('_', "-")),
         phase_label: Some(output_contract.to_string()),
@@ -514,6 +532,7 @@ fn connection<const N: usize>(from: &str, to: [&str; N]) -> OrchestrationConnect
     OrchestrationConnection {
         from: from.to_string(),
         to: to.into_iter().map(str::to_string).collect(),
+        condition: None,
     }
 }
 
@@ -589,6 +608,17 @@ fn validate_nodes(config: &OrchestrationConfig) -> Result<(), AppError> {
                 node.id
             )));
         }
+        if node.kind == NodeKind::Branch
+            && node
+                .evaluation
+                .as_deref()
+                .is_none_or(|evaluation| evaluation.trim().is_empty())
+        {
+            return Err(AppError::InvalidConfig(format!(
+                "branch node `{}` must set evaluation",
+                node.id
+            )));
+        }
         if node.kind == NodeKind::Agent
             && node
                 .instruction
@@ -605,29 +635,47 @@ fn validate_nodes(config: &OrchestrationConfig) -> Result<(), AppError> {
 }
 
 fn validate_connections(config: &OrchestrationConfig) -> Result<(), AppError> {
-    let node_ids = config
+    let nodes_by_id = config
         .nodes
         .iter()
-        .map(|node| node.id.as_str())
-        .collect::<std::collections::HashSet<_>>();
+        .map(|node| (node.id.as_str(), node))
+        .collect::<BTreeMap<_, _>>();
     for connection in &config.connections {
-        if !is_pseudo_source(&connection.from) && !node_ids.contains(connection.from.as_str()) {
+        let source = nodes_by_id.get(connection.from.as_str()).copied();
+        if !is_pseudo_source(&connection.from) && source.is_none() {
             return Err(AppError::InvalidConfig(format!(
                 "connection source `{}` does not exist",
                 connection.from
             )));
         }
+        if connection.condition.is_some()
+            && !source.is_some_and(|node| node.kind == NodeKind::Branch)
+        {
+            return Err(AppError::InvalidConfig(format!(
+                "connection from `{}` uses condition but source is not a branch node",
+                connection.from
+            )));
+        }
+        if source.is_some_and(|node| node.kind == NodeKind::Branch)
+            && connection.condition.is_none()
+        {
+            return Err(AppError::InvalidConfig(format!(
+                "connection from branch node `{}` must set condition",
+                connection.from
+            )));
+        }
         for target in &connection.to {
-            if !node_ids.contains(target.as_str()) && !is_virtual_target(target) {
+            if !nodes_by_id.contains_key(target.as_str()) && !is_virtual_target(target) {
                 return Err(AppError::InvalidConfig(format!(
                     "connection target `{target}` does not exist"
                 )));
             }
         }
     }
+    validate_branch_routes(config)?;
     for node in &config.nodes {
         for dependency in &node.depends_on {
-            if !is_pseudo_source(dependency) && !node_ids.contains(dependency.as_str()) {
+            if !is_pseudo_source(dependency) && !nodes_by_id.contains_key(dependency.as_str()) {
                 return Err(AppError::InvalidConfig(format!(
                     "node `{}` dependency `{}` does not exist",
                     node.id, dependency
@@ -635,12 +683,48 @@ fn validate_connections(config: &OrchestrationConfig) -> Result<(), AppError> {
             }
         }
         for input in &node.inputs {
-            if !is_pseudo_source(&input.source) && !node_ids.contains(input.source.as_str()) {
+            if input.source.trim().is_empty() {
+                return Err(AppError::InvalidConfig(format!(
+                    "node `{}` input source must not be empty",
+                    node.id
+                )));
+            }
+            if !is_pseudo_source(&input.source) && !nodes_by_id.contains_key(input.source.as_str())
+            {
                 return Err(AppError::InvalidConfig(format!(
                     "node `{}` input source `{}` does not exist",
                     node.id, input.source
                 )));
             }
+        }
+    }
+    Ok(())
+}
+
+fn validate_branch_routes(config: &OrchestrationConfig) -> Result<(), AppError> {
+    for branch in config
+        .nodes
+        .iter()
+        .filter(|node| node.kind == NodeKind::Branch)
+    {
+        let mut has_true = false;
+        let mut has_false = false;
+        for connection in config
+            .connections
+            .iter()
+            .filter(|connection| connection.from == branch.id)
+        {
+            match connection.condition {
+                Some(BranchCondition::True) => has_true = true,
+                Some(BranchCondition::False) => has_false = true,
+                None => {}
+            }
+        }
+        if !has_true || !has_false {
+            return Err(AppError::InvalidConfig(format!(
+                "branch node `{}` must have true and false outgoing connections",
+                branch.id
+            )));
         }
     }
     Ok(())
@@ -728,6 +812,61 @@ fn merge_dependencies(mut explicit: Vec<String>, from_connections: Vec<String>) 
     explicit
 }
 
+fn expand_executable_dependencies(
+    dependencies: Vec<String>,
+    nodes_by_id: &BTreeMap<String, OrchestrationNode>,
+    connection_dependencies: &BTreeMap<String, Vec<String>>,
+) -> Vec<String> {
+    let mut expanded = Vec::new();
+    for dependency in dependencies {
+        append_executable_dependency(
+            &dependency,
+            nodes_by_id,
+            connection_dependencies,
+            &mut expanded,
+            &mut Vec::new(),
+        );
+    }
+    expanded
+}
+
+fn append_executable_dependency(
+    dependency: &str,
+    nodes_by_id: &BTreeMap<String, OrchestrationNode>,
+    connection_dependencies: &BTreeMap<String, Vec<String>>,
+    output: &mut Vec<String>,
+    stack: &mut Vec<String>,
+) {
+    let Some(node) = nodes_by_id.get(dependency) else {
+        return;
+    };
+    if node.kind == NodeKind::Agent {
+        if !output.iter().any(|existing| existing == dependency) {
+            output.push(dependency.to_string());
+        }
+        return;
+    }
+    if stack.iter().any(|id| id == dependency) {
+        return;
+    }
+    stack.push(dependency.to_string());
+    for upstream in node.depends_on.iter().chain(
+        connection_dependencies
+            .get(dependency)
+            .into_iter()
+            .flatten(),
+    ) {
+        append_executable_dependency(
+            upstream,
+            nodes_by_id,
+            connection_dependencies,
+            output,
+            stack,
+        );
+    }
+    stack.pop();
+}
+
 pub fn load_optional_config(path: &Path) -> Result<AppConfig, AppError> {
     let path = resolve_config_path(path);
     if path.exists() {
@@ -783,6 +922,108 @@ orchestration:
 
         let error = load_config(&path).unwrap_err();
         assert!(error.to_string().contains("legacy [agents]"));
+    }
+
+    #[test]
+    fn branch_nodes_parse_conditional_routes_and_expand_dependencies() {
+        let config: super::AppConfig = toml::from_str(
+            r#"
+[orchestration]
+
+[[orchestration.nodes]]
+id = "source"
+instruction = "source.md"
+
+[[orchestration.nodes]]
+id = "quality-check"
+kind = "branch"
+evaluation = "input contains signed_off = true"
+
+[[orchestration.nodes]]
+id = "accepted"
+instruction = "accepted.md"
+
+[[orchestration.nodes]]
+id = "revise"
+instruction = "revise.md"
+
+[[orchestration.connections]]
+from = "source"
+to = ["quality-check"]
+
+[[orchestration.connections]]
+from = "quality-check"
+condition = "true"
+to = ["accepted"]
+
+[[orchestration.connections]]
+from = "quality-check"
+condition = "false"
+to = ["revise"]
+"#,
+        )
+        .unwrap();
+
+        let agents = config.orchestration.unwrap().into_agent_config().unwrap();
+        let accepted = agents
+            .specs
+            .iter()
+            .find(|spec| spec.id == "accepted")
+            .unwrap();
+        let revise = agents
+            .specs
+            .iter()
+            .find(|spec| spec.id == "revise")
+            .unwrap();
+
+        assert_eq!(accepted.depends_on, vec!["source"]);
+        assert_eq!(revise.depends_on, vec!["source"]);
+        assert!(!agents.specs.iter().any(|spec| spec.id == "quality-check"));
+    }
+
+    #[test]
+    fn branch_nodes_require_true_and_false_routes() {
+        let config: super::AppConfig = toml::from_str(
+            r#"
+[orchestration]
+
+[[orchestration.nodes]]
+id = "check"
+kind = "branch"
+evaluation = "input is complete"
+
+[[orchestration.nodes]]
+id = "accepted"
+instruction = "accepted.md"
+
+[[orchestration.connections]]
+from = "check"
+condition = "true"
+to = ["accepted"]
+"#,
+        )
+        .unwrap();
+
+        let error = config.orchestration.unwrap().validate().unwrap_err();
+        assert!(error.to_string().contains("true and false"));
+    }
+
+    #[test]
+    fn node_inputs_require_non_empty_sources() {
+        let config: super::AppConfig = toml::from_str(
+            r#"
+[orchestration]
+
+[[orchestration.nodes]]
+id = "consumer"
+instruction = "consumer.md"
+inputs = [{ source = "" }]
+"#,
+        )
+        .unwrap();
+
+        let error = config.orchestration.unwrap().validate().unwrap_err();
+        assert!(error.to_string().contains("input source must not be empty"));
     }
 
     #[test]

@@ -1,6 +1,7 @@
 export type SourceSettings = {
   agents: string[]
   instructions: string[]
+  skills: string[]
   workflows: string[]
 }
 

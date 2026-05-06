@@ -636,4 +636,60 @@ mod tests {
         assert!(context.contains("far content"));
         assert!(!context.contains("must not appear"));
     }
+
+    #[test]
+    fn context_renders_multiple_inputs_in_configured_order() {
+        let spec = AgentSpec {
+            id: "consumer".to_string(),
+            kind: NodeKind::Agent,
+            output_contract: "generic".to_string(),
+            artifact_dir: None,
+            phase_label: None,
+            instruction: Some("planning.md".to_string()),
+            command: "echo".to_string(),
+            args: Vec::new(),
+            input_sources: vec![
+                "second".to_string(),
+                "goal".to_string(),
+                "first".to_string(),
+            ],
+            depends_on: Vec::new(),
+            resources: Vec::new(),
+            timeout_secs: None,
+            retries: 0,
+            retry_delay_ms: None,
+        };
+        let mut outputs = BTreeMap::new();
+        outputs.insert(
+            "first".to_string(),
+            crate::agent::AgentOutput {
+                agent_id: "first".to_string(),
+                kind: NodeKind::Agent,
+                output_contract: "generic".to_string(),
+                phase_label: None,
+                artifact_dir: None,
+                content: "first body".to_string(),
+                artifact_path: String::new(),
+            },
+        );
+        outputs.insert(
+            "second".to_string(),
+            crate::agent::AgentOutput {
+                agent_id: "second".to_string(),
+                kind: NodeKind::Agent,
+                output_contract: "generic".to_string(),
+                phase_label: None,
+                artifact_dir: None,
+                content: "second body".to_string(),
+                artifact_path: String::new(),
+            },
+        );
+
+        let context = build_context(&spec, "goal body", "", "", &outputs);
+
+        assert_eq!(
+            context,
+            "## second\n\nsecond body\n\n## goal\n\ngoal body\n\n## first\n\nfirst body"
+        );
+    }
 }

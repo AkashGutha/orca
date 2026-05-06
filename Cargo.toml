@@ -3,6 +3,7 @@ members = [
     "crates/orca-core",
     "crates/orca-cli",
     "crates/orca-desktop",
+    "crates/orca-gui",
 ]
 exclude = ["crates/orca-desktop-runtime"]
 resolver = "2"

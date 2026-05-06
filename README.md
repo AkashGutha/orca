@@ -305,12 +305,19 @@ See [`config/orca.default.toml`](config/orca.default.toml) for the generated def
 
 ## Settings
 
-ORCA loads `settings.toml` from the workspace first, then falls back to a user config at `~/.config/orca/settings.toml` when the workspace file is missing. Use `--settings path/to/settings.toml` to load a specific settings file.
+ORCA loads `settings.toml` from the workspace first, then falls back to the user config for the current platform when the workspace file is missing. Use `--settings path/to/settings.toml` to load a specific settings file.
+
+| Platform | User settings fallback |
+| --- | --- |
+| Linux / Unix | `$XDG_CONFIG_HOME/orca/settings.toml`, or `~/.config/orca/settings.toml` when `XDG_CONFIG_HOME` is unset |
+| macOS | `~/Library/Application Support/orca/settings.toml` |
+| Windows | `%APPDATA%\\orca\\settings.toml`, or `%USERPROFILE%\\AppData\\Roaming\\orca\\settings.toml` when `APPDATA` is unset |
 
 ```toml
 [sources]
 agents = ["agents"]
 instructions = ["instructions"]
+skills = ["skills"]
 workflows = ["config"]
 
 [defaults]
@@ -319,7 +326,15 @@ artifact_dir = "orca-runs"
 max_parallel_agents = 8
 ```
 
-Source directories are ordered. Explicit CLI/GUI run fields win first, then `settings.toml`, then workflow config values, then embedded ORCA defaults. Workflow names such as `orca.default.toml` are resolved through `[sources].workflows`; instruction names are resolved through `[sources].instructions` before embedded instructions. Agent source directories are stored and validated now so ORCA can grow external agent definitions without changing the settings format.
+Source directories are ordered. Explicit CLI/GUI run fields win first, then `settings.toml`, then workflow config values, then embedded ORCA defaults. Workflow names such as `orca.default.toml` are resolved through `[sources].workflows`; instruction names are resolved through `[sources].instructions` before embedded instructions. Agent and skill source directories are stored and validated now so ORCA can grow external definitions without changing the settings format.
+
+When a settings file omits a source list, ORCA seeds it with common customization locations. Project-local folders stay first, followed by user-level folders when the platform exposes a home/config directory.
+
+| Tool family | Common project locations | Common user locations |
+| --- | --- | --- |
+| Copilot / VS Code | `.github/agents`, `.github/instructions`, `.github/prompts`, `.github/skills` | VS Code `User/prompts` under `Code`, `Code - Insiders`, or `VSCodium`; `~/.copilot/skills` |
+| Claude | `.claude/agents`, `.claude`, `.claude/skills` | `~/.claude/agents`, `~/.claude`, `~/.claude/skills` |
+| Codex | `.codex/agents`, `.codex`, `.codex/skills` | `~/.codex/agents`, `~/.codex`, `~/.codex/skills` |
 
 Examples:
 

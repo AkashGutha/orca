@@ -80,6 +80,7 @@ pub fn run() {
             list_artifacts,
             list_artifact_files,
             read_artifact,
+            browse_directory,
         ])
         .run(tauri::generate_context!())
         .expect("failed to run ORCA desktop app");
@@ -256,6 +257,14 @@ fn list_artifact_files(root: String) -> Vec<String> {
 #[tauri::command]
 fn read_artifact(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|source| format!("failed to read `{path}`: {source}"))
+}
+
+#[tauri::command]
+fn browse_directory() -> Option<String> {
+    rfd::FileDialog::new()
+        .set_title("Choose source directory")
+        .pick_folder()
+        .map(|path| path.display().to_string())
 }
 
 fn artifact_roots(settings: Settings) -> Result<Vec<String>, String> {

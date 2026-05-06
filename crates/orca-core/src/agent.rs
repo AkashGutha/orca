@@ -50,6 +50,7 @@ pub struct AgentSpec {
 #[serde(rename_all = "snake_case")]
 pub enum NodeKind {
     Agent,
+    Branch,
     Gate,
     Aggregate,
     Approval,
